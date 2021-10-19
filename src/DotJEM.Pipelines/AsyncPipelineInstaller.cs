@@ -8,6 +8,7 @@ namespace DotJEM.Pipelines
         {
             container.Register(Component.For<IPipelines>().ImplementedBy<PipelineManager>().LifestyleTransient());
             container.Register(Component.For<IPipelineGraphFactory>().ImplementedBy<PipelineGraphFactory>().LifestyleTransient());
+            container.Register(Component.For<IPipelineExecutorDelegateFactory>().ImplementedBy<PipelineExecutorDelegateFactory>());
             container.Register(Component.For<IPipelineHandlerCollection>().ImplementedBy<PipelineHandlerCollection>().LifestyleTransient());
         }
     }

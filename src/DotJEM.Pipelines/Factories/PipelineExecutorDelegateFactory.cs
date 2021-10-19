@@ -21,7 +21,7 @@ namespace DotJEM.Pipelines.Factories
 
     public class PipelineExecutorDelegateFactory : IPipelineExecutorDelegateFactory
     {
-        private static readonly MethodInfo contextParameterGetter = typeof(IPipelineContext).GetMethod("GetParameter");
+        private static readonly MethodInfo contextParameterGetter = typeof(IPipelineContext).GetMethod("Get");
 
         public MethodNode<T> CreateNode<T>(object target, MethodInfo method, PipelineFilterAttribute[] filters)
         {
@@ -84,42 +84,22 @@ namespace DotJEM.Pipelines.Factories
 
         public Expression<NextFactoryDelegate<T>> CreateNextStuff<T>(MethodInfo method)
         {
-            try
-            {
-                ParameterInfo[] list = method.GetParameters();
-                ParameterInfo nextParameterInfo = list[list.Length - 1];
+            ParameterInfo[] list = method.GetParameters();
+            ParameterInfo nextParameterInfo = list[list.Length - 1];
+            Type[] generics = nextParameterInfo.ParameterType.GetGenericArguments();
 
-                Type[] generics = nextParameterInfo.ParameterType.GetGenericArguments();
+            ParameterExpression contextParameter = Expression.Parameter(typeof(IPipelineContext), "context");
+            ParameterExpression nodeParameter = Expression.Parameter(typeof(INode<T>), "node");
 
-                ParameterExpression contextParameter = Expression.Parameter(typeof(IPipelineContext), "context");
-                ParameterExpression nodeParameter = Expression.Parameter(typeof(INode<T>), "node");
+            Expression[] arguments = list
+                .Take(list.Length - 2)
+                .Select(p => (Expression)Expression.Constant(p.Name))
+                .Prepend(nodeParameter)
+                .Prepend(contextParameter)
+                .ToArray();
+            MethodCallExpression methodCall = Expression.Call(typeof(NextFactory), nameof(NextFactory.Create), generics, arguments);
 
-                Expression[] arguments = list
-                    .Take(list.Length - 2)
-                    .Select(p => (Expression)Expression.Constant(p.Name))
-                    .Prepend(nodeParameter)
-                    .Prepend(contextParameter)
-                    .ToArray();
-                MethodCallExpression methodCall = Expression.Call(typeof(NextFactory), nameof(NextFactory.Create), generics, arguments);
-
-                return Expression.Lambda<NextFactoryDelegate<T>>(methodCall, contextParameter, nodeParameter);
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidTargetMethodException("Could not resolve target Next factory to use for method", method, ex);
-            }
-            
-        }
-    }
-
-    public class InvalidTargetMethodException : Exception
-    {
-        public MethodInfo Method { get; }
-
-        public InvalidTargetMethodException(string message, MethodInfo method, Exception exception)
-            : base(message, exception)
-        {
-            Method = method;
+            return Expression.Lambda<NextFactoryDelegate<T>>(methodCall, contextParameter, nodeParameter);
         }
     }
 }
