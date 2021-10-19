@@ -52,7 +52,7 @@ namespace DotJEM.Pipelines.Factories
                     {
                         string message = $"{handlerType.FullName} has dependencies to be satisfied, missing dependencies:" +
                                          $"\n\r{string.Join("\n\r - ", unknownDependencies.Select(d => d.Type.FullName))}";
-                        throw new DependencyResolverException(message);
+                        throw new Exception(message);
                     }
                     queue.Enqueue(handler);
                 }

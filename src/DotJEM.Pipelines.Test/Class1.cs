@@ -1,8 +1,163 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq.Expressions;
+using System.Threading.Tasks;
+using AgileObjects.ReadableExpressions;
+using DotJEM.Diagnostic;
+using DotJEM.Pipelines.Attributes;
+using DotJEM.Pipelines.Factories;
+using DotJEM.Pipelines.NextHandlers;
+using Newtonsoft.Json.Linq;
+using NUnit.Framework;
 
 namespace DotJEM.Pipelines.Test
 {
-    public class Class1
+    [TestFixture]
+    public class PipelineManagerTest
     {
+        [Test]
+        public void CreateInvocator_ReturnsDelegate()
+        {
+            IPipelineHandlerProvider[] providersArr = new IPipelineHandlerProvider[]
+            {
+                new FakeFirstTarget(),
+                new FakeSecondTarget(),
+                new FakeThirdTarget()
+            };
+            IPipelineHandlerCollection providers = new PipelineHandlerCollection(providersArr);
+            IPipelines pipelines = new PipelineManager(new FakeLogger(), new PipelineGraphFactory(providers, new PipelineExecutorDelegateFactory()));
+            IPipelineContext context = new FakeContext()
+                .Set("id", 42)
+                .Set("name", "Foo")
+                .Set("test", "Foo");
+
+
+            ICompiledPipeline<JObject> pipeline = pipelines
+                .For<FakeContext, JObject>((FakeContext)context, ctx => Task.FromResult(new JObject()));
+            pipeline.Invoke();
+        }
+
+
     }
+
+    [TestFixture]
+    public class PipelineExecutorDelegateFactoryTest
+    {
+
+        [Test]
+        public void CreateInvocator_ReturnsDelegate()
+        {
+            PipelineExecutorDelegateFactory factory = new PipelineExecutorDelegateFactory();
+
+            FakeFirstTarget target = new FakeFirstTarget();
+            PipelineExecutorDelegate<JObject> action = factory.CreateInvocator<JObject>(target, target.GetType().GetMethod(nameof(FakeFirstTarget.Run)));
+            IPipelineContext context = new FakeContext()
+                .Set("id", 42)
+                .Set("name", "Foo");
+            action(context, new FakeNextHandler<JObject, int, string>());
+        }
+
+        [Test]
+        public void CreateInvocator_ReturnsDelegat2e()
+        {
+
+            PipelineExecutorDelegateFactory factory = new PipelineExecutorDelegateFactory();
+
+
+            FakeFirstTarget target = new FakeFirstTarget();
+            Expression<NextFactoryDelegate<JObject>> exp = factory.CreateNextStuff<JObject>(target.GetType().GetMethod(nameof(FakeFirstTarget.Run)));
+
+            Console.WriteLine(exp.ToReadableString());
+
+            exp.Compile();
+
+        }
+
+        [Test]
+        public void Manager_ReturnsDelegat2e()
+        {
+
+            PipelineManager manager = new PipelineManager(new FakeLogger(), new PipelineGraphFactory(new PipelineHandlerCollection(new IPipelineHandlerProvider[]
+            {
+                new FakeFirstTarget(),
+                new FakeSecondTarget(),
+                new FakeThirdTarget()
+            }), new PipelineExecutorDelegateFactory()));
+            IPipelineContext context = new FakeContext()
+                .Set("id", 42)
+                .Set("name", "Foo")
+                .Set("test", "x");
+
+            manager.For(context, async fakeContext => new JObject()).Invoke();
+            manager.For(context, async fakeContext => new JObject()).Invoke();
+            manager.For(context, async fakeContext => new JObject()).Invoke();
+            manager.For(context, async fakeContext => new JObject()).Invoke();
+
+        }
+
+
+    }
+
+    public class FakeNextHandler<TResult, T1, T2> : INext<TResult, T1, T2>
+    {
+        public Task<TResult> Invoke()
+        {
+            Console.WriteLine($"FakeNextHandler.Invoke()");
+            return Task.FromResult(default(TResult));
+        }
+
+        public Task<TResult> Invoke(T1 arg1, T2 arg2)
+        {
+            Console.WriteLine($"FakeNextHandler.Invoke({arg1}, {arg2})");
+            return Task.FromResult(default(TResult));
+        }
+    }
+
+    public class FakeLogger : ILogger
+    {
+        public Task LogAsync(string type, object customData = null)
+        {
+            Console.WriteLine(type);
+            return Task.CompletedTask;
+        }
+    }
+
+    public class FakeFirstTarget : IPipelineHandlerProvider
+    {
+        [PropertyFilter("test", ".*")]
+        public Task<JObject> Run(int id, string name, IPipelineContext context, INext<JObject, int, string> next)
+        {
+            Console.WriteLine($"FakeFirstTarget.Run({id}, {name})");
+            return next.Invoke();
+        }
+    }
+
+    [PropertyFilter("name", ".*")]
+    public class FakeSecondTarget : IPipelineHandlerProvider
+    {
+        [PropertyFilter("test", ".*")]
+        public Task<JObject> Run(int id, string name, IPipelineContext context, INext<JObject, int, string> next)
+        {
+            Console.WriteLine($"FakeSecondTarget.Run({id}, {name})");
+            return next.Invoke(50, "OPPS");
+        }
+
+    }
+
+    public class FakeThirdTarget : IPipelineHandlerProvider
+    {
+        [PropertyFilter("test", ".*")]
+        public Task<JObject> Run(int id, string name, FakeContext context, INext<JObject, int, string> next)
+        {
+            Console.WriteLine($"FakeSecondTarget.Run({id}, {name})");
+            return next.Invoke();
+        }
+
+    }
+
+    public class FakeContext : PipelineContext
+    {
+
+    }
+
 }
