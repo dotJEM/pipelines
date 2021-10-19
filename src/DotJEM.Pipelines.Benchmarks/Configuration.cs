@@ -16,7 +16,7 @@ namespace DotJEM.Pipelines.Benchmarks
     {
     }
 
-    [SimpleJob(RuntimeMoniker.CoreRt50),SimpleJob(RuntimeMoniker.Net48)]
+    [SimpleJob(RuntimeMoniker.Net50),SimpleJob(RuntimeMoniker.Net48)]
     public class PipelineExecutionBenchmarks
     {
         private readonly IPipelines pipelines;
@@ -71,6 +71,7 @@ namespace DotJEM.Pipelines.Benchmarks
         {
             LegacyPrebound.Value.Invoke();
         }
+
         [Benchmark]
         public void PreboundPurePipelineAdapter()
         {
