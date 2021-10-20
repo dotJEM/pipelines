@@ -12,7 +12,7 @@ namespace DotJEM.Pipelines.Nodes
 
     public interface INode<T> : INode
     {
-        Task<T> Invoke(IPipelineContextCarrier<T> context);
+        Task<T> Invoke(IPipelineContextCarrier<T> carrier);
     }
 
     public interface IPipelineMethod<T>

@@ -88,18 +88,18 @@ namespace DotJEM.Pipelines.Factories
             ParameterInfo nextParameterInfo = list[list.Length - 1];
             Type[] generics = nextParameterInfo.ParameterType.GetGenericArguments();
 
-            ParameterExpression contextParameter = Expression.Parameter(typeof(IPipelineContext), "context");
+            ParameterExpression carrierParameter = Expression.Parameter(typeof(IPipelineContextCarrier<T>), "carrier");
             ParameterExpression nodeParameter = Expression.Parameter(typeof(INode<T>), "node");
 
             Expression[] arguments = list
                 .Take(list.Length - 2)
                 .Select(p => (Expression)Expression.Constant(p.Name))
                 .Prepend(nodeParameter)
-                .Prepend(contextParameter)
+                .Prepend(carrierParameter)
                 .ToArray();
             MethodCallExpression methodCall = Expression.Call(typeof(NextFactory), nameof(NextFactory.Create), generics, arguments);
 
-            return Expression.Lambda<NextFactoryDelegate<T>>(methodCall, contextParameter, nodeParameter);
+            return Expression.Lambda<NextFactoryDelegate<T>>(methodCall, carrierParameter, nodeParameter);
         }
     }
 }

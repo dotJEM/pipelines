@@ -114,13 +114,13 @@ namespace DotJEM.Pipelines
                 this.signature = method.Signature;
             }
 
-            public async Task<T> Invoke(IPipelineContextCarrier<T> context)
+            public async Task<T> Invoke(IPipelineContextCarrier<T> carrier)
             {
                 //TODO: Here we generate the same JObject again and again, however it may be faster than reusing and clearing correctly.
-                JObject info = perfGenerator(context.Context);
+                JObject info = perfGenerator(carrier.Context);
                 info["$$handler"] = signature;
                 using (logger.Track("pipeline", info))
-                    return await target(context.Context, factory(context.Context, next));
+                    return await target(carrier.Context, factory(carrier, next));
             }
 
             public override string ToString()
@@ -142,13 +142,13 @@ namespace DotJEM.Pipelines
                 this.perfGenerator = perfGenerator;
             }
 
-            public async Task<T> Invoke(IPipelineContextCarrier<T> context)
+            public async Task<T> Invoke(IPipelineContextCarrier<T> carrier)
             {
                 //TODO: Here we generate the same JObject again and again, however it may be faster than reusing and clearing correctly.
-                JObject info = perfGenerator(context.Context);
+                JObject info = perfGenerator(carrier.Context);
                 info["$$handler"] = $"(LoggingFinalNode)";
                 using (logger.Track("pipeline", info))
-                    return await context.Complete(context.Context);
+                    return await carrier.Complete(carrier.Context);
             }
 
             public override string ToString() => "(LoggingFinalNode)";
@@ -171,9 +171,9 @@ namespace DotJEM.Pipelines
                 this.signature = method.Signature;
             }
 
-            public Task<T> Invoke(IPipelineContextCarrier<T> context)
+            public Task<T> Invoke(IPipelineContextCarrier<T> carrier)
             {
-                return target(context.Context, factory(context.Context, next));
+                return target(carrier.Context, factory(carrier, next));
             }
 
             public override string ToString()
@@ -186,7 +186,7 @@ namespace DotJEM.Pipelines
         {
             public IPrivateNode Next => null;
          
-            public Task<T> Invoke(IPipelineContextCarrier<T> context) => context.Complete(context.Context);
+            public Task<T> Invoke(IPipelineContextCarrier<T> carrier) => carrier.Complete(carrier.Context);
 
             public override string ToString() => "(FinalNode)";
         }
