@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DotJEM.Pipelines.Attributes;
 using DotJEM.Pipelines.NextHandlers;
@@ -6,6 +7,16 @@ using Newtonsoft.Json.Linq;
 
 namespace DotJEM.Pipelines.Benchmarks
 {
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true)]
+    public class HttpMethodFilterAttribute : PropertyFilterAttribute
+    {
+        public HttpMethodFilterAttribute(string method, RegexOptions options = RegexOptions.None)
+            : base("method", $"^{method}$", options | RegexOptions.IgnoreCase)
+        {
+        }
+    }
+
+
     public abstract class PipelineHandler : IPipelineHandlerProvider
     {
         [HttpMethodFilter("GET")]
