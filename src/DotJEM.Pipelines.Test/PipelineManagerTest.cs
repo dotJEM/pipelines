@@ -48,6 +48,29 @@ namespace DotJEM.Pipelines.Test
                 .For<FakeContext, JObject>((FakeContext)context, ctx => Task.FromResult(new JObject()));
             pipeline.Invoke();
         }
+
+        [Test]
+        public async Task For_AlterCompletion_ReturnsCompiledPipeline()
+        {
+            IPipelineHandlerProvider[] providersArr = { new FakeFirstTarget(), new FakeSecondTarget(), new FakeThirdTarget() };
+            IPipelineHandlerCollection providers = new PipelineHandlerCollection(providersArr);
+            IPipelines pipelines = new PipelineManager(new FakeLogger(), new PipelineGraphFactory(providers, new PipelineExecutorDelegateFactory()));
+            IPipelineContext context = new FakeContext()
+                .Set("id", 42)
+                .Set("name", "Foo")
+                .Set("test", "Foo");
+
+            ICompiledPipeline<JObject> pipelineA = pipelines
+                .For<FakeContext, JObject>((FakeContext)context, ctx => Task.FromResult(JObject.FromObject(new { Source="First" })));
+            JObject resultA = await pipelineA.Invoke();
+            
+            ICompiledPipeline<JObject> pipelineB = pipelines
+                .For<FakeContext, JObject>((FakeContext)context, ctx => Task.FromResult(JObject.FromObject(new {Source="Second" })));
+            JObject resultB = await pipelineB.Invoke();
+
+            Assert.That((string)resultA["Source"], Is.EqualTo("First"));
+            Assert.That((string)resultB["Source"], Is.EqualTo("Second"));
+        }
         
         [Test]
         public async Task For_DifferentContexts_ReturnsCompiledPipelineWorking()
