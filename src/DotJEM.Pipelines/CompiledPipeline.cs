@@ -11,20 +11,20 @@ namespace DotJEM.Pipelines
 
     public class CompiledPipeline<T> : ICompiledPipeline<T>
     {
-        private readonly IPipelineContext context;
+        private readonly IPipelineContextCarrier<T> carrier;
         private readonly IUnboundPipeline<T> pipeline;
 
-        public CompiledPipeline(IUnboundPipeline<T> pipeline, IPipelineContext context)
+        public CompiledPipeline(IUnboundPipeline<T> pipeline, IPipelineContextCarrier<T> carrier)
         {
             this.pipeline = pipeline;
-            this.context = context;
+            this.carrier = carrier;
         }
         
-        public Task<T> Invoke() => pipeline.Invoke(context);
+        public Task<T> Invoke() => pipeline.Invoke(carrier);
 
         public override string ToString()
         {
-            return $"{context}{Environment.NewLine}{pipeline}";
+            return $"{carrier}{Environment.NewLine}{pipeline}";
         }
     }
 }

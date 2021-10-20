@@ -10,15 +10,16 @@ namespace DotJEM.Pipelines.NextHandlers
 
     public class Next<TResult> : INext<TResult>
     {
+        protected IPipelineContextCarrier<TResult> Carrier { get; }
+        protected IPipelineContext Context => Carrier.Context;
         protected INode<TResult> NextNode { get; }
-        protected IPipelineContext Context { get; }
 
-        public Next(IPipelineContext context, INode<TResult> next)
+        public Next(IPipelineContextCarrier<TResult> carrier, INode<TResult> next)
         {
-            this.Context = context;
+            this.Carrier = carrier;
             this.NextNode = next;
         }
 
-        public Task<TResult> Invoke() => NextNode.Invoke(Context);
+        public Task<TResult> Invoke() => NextNode.Invoke(Carrier);
     }
 }

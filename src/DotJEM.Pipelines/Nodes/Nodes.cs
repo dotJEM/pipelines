@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using DotJEM.Pipelines.Attributes;
 using DotJEM.Pipelines.Factories;
+using DotJEM.Pipelines.NextHandlers;
 
 namespace DotJEM.Pipelines.Nodes
 {
@@ -11,7 +12,7 @@ namespace DotJEM.Pipelines.Nodes
 
     public interface INode<T> : INode
     {
-        Task<T> Invoke(IPipelineContext context);
+        Task<T> Invoke(IPipelineContextCarrier<T> context);
     }
 
     public interface IPipelineMethod<T>
@@ -19,19 +20,7 @@ namespace DotJEM.Pipelines.Nodes
         PipelineExecutorDelegate<T> Target { get; }
         NextFactoryDelegate<T> NextFactory { get; }
         string Signature { get; }
-    }
-
-    public class TerminationMethod<T> : IPipelineMethod<T>
-    {
-        public TerminationMethod(PipelineExecutorDelegate<T> target)
-        {
-            Target = target;
-        }
-
-        public PipelineExecutorDelegate<T> Target { get; }
-        public NextFactoryDelegate<T> NextFactory { get; } = (_, _) => null;
-        public string Signature => "PipelineTermination";
-    }
+    } 
 
     public interface IClassNode<T>
     {

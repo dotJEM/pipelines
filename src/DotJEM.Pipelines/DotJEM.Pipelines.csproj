@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotJEM.Diagnostic" Version="1.1.43-beta.1" />
+    <PackageReference Include="DotJEM.Diagnostic" Version="1.1.44-beta.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
   </ItemGroup>
 

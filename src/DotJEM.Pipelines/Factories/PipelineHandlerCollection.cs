@@ -52,12 +52,19 @@ namespace DotJEM.Pipelines.Factories
                     {
                         string message = $"{handlerType.FullName} has dependencies to be satisfied, missing dependencies:" +
                                          $"\n\r{string.Join("\n\r - ", unknownDependencies.Select(d => d.Type.FullName))}";
-                        throw new Exception(message);
+                        throw new PipelineDependencyResolutionException(message);
                     }
                     queue.Enqueue(handler);
                 }
             }
             return ordered.Select(type => map[type]).ToList();
+        }
+    }
+
+    public class PipelineDependencyResolutionException : Exception
+    {
+        public PipelineDependencyResolutionException(string message) : base(message)
+        {
         }
     }
 }

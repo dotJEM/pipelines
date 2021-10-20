@@ -25,20 +25,22 @@ namespace DotJEM.Pipelines
             this.factory = factory;
         }
 
-        public ICompiledPipeline<T> For<TContext, T>(TContext context, Func<TContext, Task<T>> final) where TContext : class, IPipelineContext
+        public ICompiledPipeline<T> For<TContext, T>(TContext context, Func<TContext, Task<T>> completion) where TContext : class, IPipelineContext
         {
-            IUnboundPipeline<T> unbound = LookupPipeline(context, final);
-            return new CompiledPipeline<T>(unbound, context);
+            IPipelineContextCarrier<T> carrier = new PipelineContextCarrier<TContext, T>(context, completion);
+            IUnboundPipeline<T> unbound = LookupPipeline<TContext, T>(context);
+            return new CompiledPipeline<T>(unbound, carrier);
         }
 
-        public IUnboundPipeline<T> LookupPipeline<TContext, T>(TContext context, Func<TContext, Task<T>> final) where TContext : class, IPipelineContext
+        public IUnboundPipeline<T> LookupPipeline<TContext, T>(TContext context) where TContext : class, IPipelineContext
         {
             IPipelineGraph<T> graph = factory.GetGraph<T>();
             return (IUnboundPipeline<T>)cache.GetOrAdd(graph.Key(context), key =>
             {
                 IEnumerable<MethodNode<T>> matchingNodes = graph.Nodes(context);
-                return new UnboundPipeline<T>(performance, graph, matchingNodes, ctx => final(ctx as TContext));
+                return new UnboundPipeline<T>(performance, graph, matchingNodes);
             });
         }
     }
+
 }

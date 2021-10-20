@@ -10,46 +10,76 @@ using Newtonsoft.Json.Linq;
 
 namespace DotJEM.Pipelines
 {
-    public static class LoggerExtensions
+
+    public interface IPipelineContextCarrier<T>
     {
-        //TODO: We need to have null logger as part of dotjem.diagnostics instead so we can do this correctly.
-        public static bool IsEnabled(this ILogger self) => !(self.GetType().Name.Equals("NullLogger"));
+        IPipelineContext Context { get; }
+        Task<T> Complete(IPipelineContext context);
+        IPipelineContextCarrier<T> Modify(Func<IPipelineContext, IPipelineContext> func);
+    }
+
+    public class PipelineContextCarrier<TContext, T> : IPipelineContextCarrier<T> where TContext : class, IPipelineContext
+    {
+        private TContext context;
+        private readonly Func<TContext, Task<T>> completion;
+
+        public IPipelineContext Context => context;
+
+        public PipelineContextCarrier(TContext context, Func<TContext, Task<T>> completion)
+        {
+            this.context = context;
+            this.completion = completion;
+        }
+
+        public Task<T> Complete(IPipelineContext context)
+        {
+            //TODO: Ideally contexts should have an option to be immuteable, this uses the initial context .
+            return completion(context as TContext);
+        }
+
+        public IPipelineContextCarrier<T> Modify(Func<IPipelineContext, IPipelineContext> func)
+        {
+            //TODO: Ideally contexts should have an option to be immuteable.
+            this.context = (TContext)func(context);
+            return this;
+        }
     }
 
     public interface IUnboundPipeline<T>
     {
-        Task<T> Invoke(IPipelineContext context);
+        Task<T> Invoke(IPipelineContextCarrier<T> context);
     }
+
     public class UnboundPipeline<T> : IUnboundPipeline<T>
     {
-        private readonly IPrivateNode<T> target;
+        private readonly IPrivateNode target;
 
-        public UnboundPipeline(ILogger performance, IPipelineGraph graph, IEnumerable<MethodNode<T>> nodes, Func<IPipelineContext, Task<T>> final)
+        public UnboundPipeline(ILogger logger, IPipelineGraph graph, IEnumerable<MethodNode<T>> nodes)
         {
-            if (performance.IsEnabled())
+            if (logger is not NullLogger)
             {
                 this.target = nodes.Reverse()
                     .Aggregate(
-                        (IPrivateNode<T>)new PerformanceNode<T>(performance, graph.Performance, new TerminationMethod<T>((context, _) => final(context)), null),
-                        (node, methodNode) => new PerformanceNode<T>(performance, graph.Performance, methodNode, node));
+                        (IPrivateNode)new LoggingFinalNode(logger, graph.Performance),
+                        (node, methodNode) => new LoggingNode(logger, graph.Performance, methodNode, node));
             }
             else
             {
                 this.target = nodes.Reverse()
                     .Aggregate(
-                        (IPrivateNode<T>)new Node<T>(new TerminationMethod<T>((context, _) => final(context)), null),
-                        (node, methodNode) => new Node<T>(methodNode, node));
+                        (IPrivateNode)new FinalNode(),
+                        (node, methodNode) => new Node(methodNode, node));
             }
         }
 
-        public Task<T> Invoke(IPipelineContext context)
+        public Task<T> Invoke(IPipelineContextCarrier<T> context)
         {
             return target.Invoke(context);
         }
 
         public override string ToString()
         {
-            IPrivateNode<T> node = this.target;
+            IPrivateNode node = this.target;
             StringBuilder builder = new ();
             do
             {
@@ -58,25 +88,25 @@ namespace DotJEM.Pipelines
             return builder.ToString();
         }
 
-        private interface IPrivateNode<T> : INode<T>
+        private interface IPrivateNode : INode<T>
         {
-            IPrivateNode<T> Next { get; }
+            IPrivateNode Next { get; }
         }
 
-        private class PerformanceNode<T> : IPrivateNode<T>
+        private class LoggingNode : IPrivateNode
         {
-            private readonly IPrivateNode<T> next;
+            private readonly IPrivateNode next;
             private readonly PipelineExecutorDelegate<T> target;
             private readonly NextFactoryDelegate<T> factory;
-            private readonly ILogger performance;
+            private readonly ILogger logger;
             private readonly Func<IPipelineContext, JObject> perfGenerator;
             private readonly string signature;
 
-            public IPrivateNode<T> Next => next;
+            public IPrivateNode Next => next;
 
-            public PerformanceNode(ILogger performance, Func<IPipelineContext, JObject> perfGenerator, IPipelineMethod<T> method, IPrivateNode<T> next)
+            public LoggingNode(ILogger logger, Func<IPipelineContext, JObject> perfGenerator, IPipelineMethod<T> method, IPrivateNode next)
             {
-                this.performance = performance;
+                this.logger = logger;
                 this.perfGenerator = perfGenerator;
                 this.next = next;
                 this.factory = method.NextFactory;
@@ -84,13 +114,13 @@ namespace DotJEM.Pipelines
                 this.signature = method.Signature;
             }
 
-            public async Task<T> Invoke(IPipelineContext context)
+            public async Task<T> Invoke(IPipelineContextCarrier<T> context)
             {
                 //TODO: Here we generate the same JObject again and again, however it may be faster than reusing and clearing correctly.
-                JObject info = perfGenerator(context);
+                JObject info = perfGenerator(context.Context);
                 info["$$handler"] = signature;
-                using (performance.Track("pipeline", info))
-                    return await target(context, factory(context, next));
+                using (logger.Track("pipeline", info))
+                    return await target(context.Context, factory(context.Context, next));
             }
 
             public override string ToString()
@@ -99,16 +129,41 @@ namespace DotJEM.Pipelines
             }
         }
 
-        private class Node<T> : IPrivateNode<T>
+        private class LoggingFinalNode : IPrivateNode
         {
-            private readonly IPrivateNode<T> next;
+            private readonly ILogger logger;
+            private readonly Func<IPipelineContext, JObject> perfGenerator;
+
+            public IPrivateNode Next => null;
+         
+            public LoggingFinalNode(ILogger logger, Func<IPipelineContext, JObject> perfGenerator)
+            {
+                this.logger = logger;
+                this.perfGenerator = perfGenerator;
+            }
+
+            public async Task<T> Invoke(IPipelineContextCarrier<T> context)
+            {
+                //TODO: Here we generate the same JObject again and again, however it may be faster than reusing and clearing correctly.
+                JObject info = perfGenerator(context.Context);
+                info["$$handler"] = $"(LoggingFinalNode)";
+                using (logger.Track("pipeline", info))
+                    return await context.Complete(context.Context);
+            }
+
+            public override string ToString() => "(LoggingFinalNode)";
+        }
+
+        private class Node : IPrivateNode
+        {
+            private readonly IPrivateNode next;
             private readonly PipelineExecutorDelegate<T> target;
             private readonly NextFactoryDelegate<T> factory;
             private readonly string signature;
 
-            public IPrivateNode<T> Next => next;
+            public IPrivateNode Next => next;
 
-            public Node(IPipelineMethod<T> method, IPrivateNode<T> next)
+            public Node(IPipelineMethod<T> method, IPrivateNode next)
             {
                 this.next = next;
                 this.factory = method.NextFactory;
@@ -116,16 +171,24 @@ namespace DotJEM.Pipelines
                 this.signature = method.Signature;
             }
 
-            public Task<T> Invoke(IPipelineContext context)
+            public Task<T> Invoke(IPipelineContextCarrier<T> context)
             {
-                return target(context, factory(context, next));
+                return target(context.Context, factory(context.Context, next));
             }
 
             public override string ToString()
             {
                 return $"{signature} (Normal)";
             }
+        }
 
+        private class FinalNode : IPrivateNode
+        {
+            public IPrivateNode Next => null;
+         
+            public Task<T> Invoke(IPipelineContextCarrier<T> context) => context.Complete(context.Context);
+
+            public override string ToString() => "(FinalNode)";
         }
     }
 }
