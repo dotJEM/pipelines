@@ -3,11 +3,22 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright © DotJEM 2021</Copyright>
+    <PackageProjectUrl>https://github.com/dotJEM/pipelines</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/dotJEM/pipelines</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <Company>N/A</Company>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="DotJEM.Diagnostic" Version="1.1.44-beta.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
   </ItemGroup>
+    <PropertyGroup>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    </PropertyGroup>
 
 </Project>
