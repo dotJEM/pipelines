@@ -37,13 +37,15 @@ namespace DotJEM.Pipelines.Benchmarks
         private Lazy<ICompiledPipeline<JObject>> LegacyPrebound;
         private Lazy<ICompiledPipeline<JObject>> PurePrebound;
 
-        private ICompiledPipeline<JObject> Build(string type)
+        private ICompiledPipeline<JObject> Build(string type) => Build(type, x => x);
+
+        private ICompiledPipeline<JObject> Build(string type, Func<IPipelineContext, IPipelineContext> ctx)
         {
-            IPipelineContext context = new PipelineContext()
+            IPipelineContext context = ctx(new PipelineContext()
                 .Set("contentType", "none")
                 .Set("id", Guid.Empty)
                 .Set("method", "GET")
-                .Set("type", type);
+                .Set("type", type));
 
             ICompiledPipeline<JObject> pipeline = pipelines
                 .For(context, ctx => Task.FromResult(new JObject()));
@@ -65,6 +67,12 @@ namespace DotJEM.Pipelines.Benchmarks
             pipeline.Invoke();
         }
 
+        [Benchmark]
+        public void Pure1PipelineAdapter()
+        {
+            ICompiledPipeline<JObject> pipeline = Build("PURE1");
+            pipeline.Invoke();
+        }
 
         [Benchmark]
         public void PreboundLegacyPipelineAdapter()
@@ -98,6 +106,16 @@ namespace DotJEM.Pipelines.Benchmarks
     {
         [HttpMethodFilter("GET")]
         public async Task<JObject> Get(IPipelineContext context, INext<JObject, string, Guid> next)
+        {
+            return await next.Invoke();
+        }
+    }
+
+    [PropertyFilter("type", "PURE1")]
+    public class Pure1Handler : IPipelineHandlerProvider
+    {
+        [HttpMethodFilter("GET")]
+        public async Task<JObject> Get(string type, IPipelineContext context, INext<JObject, string, Guid> next)
         {
             return await next.Invoke();
         }
