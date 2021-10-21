@@ -75,6 +75,19 @@ namespace DotJEM.Pipelines.Benchmarks
         }
 
         [Benchmark]
+        public void Pure2PipelineAdapter()
+        {
+            ICompiledPipeline<JObject> pipeline = Build("PURE2");
+            pipeline.Invoke();
+        }
+        [Benchmark]
+        public void Pure3PipelineAdapter()
+        {
+            ICompiledPipeline<JObject> pipeline = Build("PURE3");
+            pipeline.Invoke();
+        }
+
+        [Benchmark]
         public void PreboundLegacyPipelineAdapter()
         {
             LegacyPrebound.Value.Invoke();
@@ -115,9 +128,29 @@ namespace DotJEM.Pipelines.Benchmarks
     public class Pure1Handler : IPipelineHandlerProvider
     {
         [HttpMethodFilter("GET")]
-        public async Task<JObject> Get(string type, IPipelineContext context, INext<JObject, string, Guid> next)
+        public async Task<JObject> Get(string type, IPipelineContext context, INext<JObject, string> next)
         {
-            return await next.Invoke();
+            return await next.Invoke(type);
+        }
+    }
+
+    [PropertyFilter("type", "PURE2")]
+    public class Pure2Handler : IPipelineHandlerProvider
+    {
+        [HttpMethodFilter("GET")]
+        public async Task<JObject> Get(string type, Guid id, IPipelineContext context, INext<JObject, string, Guid> next)
+        {
+            return await next.Invoke(type, id);
+        }
+    }
+
+    [PropertyFilter("type", "PURE3")]
+    public class Pure3Handler : IPipelineHandlerProvider
+    {
+        [HttpMethodFilter("GET")]
+        public async Task<JObject> Get(string type, Guid id, string method, IPipelineContext context, INext<JObject, string, Guid, string> next)
+        {
+            return await next.Invoke(type, id, method);
         }
     }
 
