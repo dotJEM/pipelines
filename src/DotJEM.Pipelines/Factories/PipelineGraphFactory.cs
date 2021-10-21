@@ -70,8 +70,8 @@ namespace DotJEM.Pipelines.Factories
                     .SelectMany(key => context.TryGetValue(key, out object value) ? encoding.GetBytes(value.ToString()) : Array.Empty<byte>());
                 //TODO: The pipelines are dependant on the actual context type at this time, inside the pipeline we should really not care, as such the majority of a pipeline
                 //      should be reuseable in case that the return type is the same, and the context just as to inherit from IPipelineContext, but for now that is not the case.
-                //byte[] hash = provider.ComputeHash(bytes.ToArray());
-                byte[] hash = provider.ComputeHash(bytes.Concat(encoding.GetBytes(context.GetType().FullName)).ToArray());
+                byte[] hash = provider.ComputeHash(bytes.ToArray());
+                //byte[] hash = provider.ComputeHash(bytes.Concat(encoding.GetBytes(context.GetType().FullName)).ToArray());
                 string hashkey = string.Join("", hash.Select(b => b.ToString("X2")));
                 return hashkey;
             }
