@@ -24,21 +24,28 @@ namespace DotJEM.Pipelines.Nodes
 
     public interface IClassNode<T>
     {
-        IEnumerable<MethodNode<T>> For(IPipelineContext context);
+        void Visit(IPipelineContext context);
+        IEnumerable<IPipelineMethod<T>> For(IPipelineContext context);
     }
 
     public class ClassNode<T> : IClassNode<T>
     {
-        private readonly List<MethodNode<T>> nodes;
+        private List<MethodNode<T>> nodes { get; }
 
         public ClassNode(List<MethodNode<T>> nodes)
         {
             this.nodes = nodes;
         }
 
-        public IEnumerable<MethodNode<T>> For(IPipelineContext context)
+        public IEnumerable<IPipelineMethod<T>> For(IPipelineContext context)
         {
             return nodes.Where(n => n.Accepts(context));
+        }
+
+        public void Visit(IPipelineContext context)
+        {
+            foreach (MethodNode<T> node in nodes)
+                node.Visit(context);
         }
     }
 
@@ -63,6 +70,12 @@ namespace DotJEM.Pipelines.Nodes
             NextFactory = nextFactory;
         }
 
+        public void Visit(IPipelineContext context)
+        {
+            foreach (FilterGroup filterGroup in filters)
+                filterGroup.Visit(context);
+        }
+
         public bool Accepts(IPipelineContext context)
         {
             return filters.All(selector => selector.Accepts(context));
@@ -77,6 +90,12 @@ namespace DotJEM.Pipelines.Nodes
             {
                 this.key = key;
                 this.filters = filters;
+            }
+            
+            public void Visit(IPipelineContext context)
+            {
+                foreach (PipelineFilterAttribute filter in filters)
+                    filter.Accepts(context);
             }
 
             public bool Accepts(IPipelineContext context)
