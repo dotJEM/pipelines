@@ -54,7 +54,7 @@ namespace DotJEM.Pipelines
     {
         private readonly IPrivateNode target;
 
-        public UnboundPipeline(ILogger logger, IPipelineGraph graph, IEnumerable<MethodNode<T>> nodes)
+        public UnboundPipeline(ILogger logger, IPipelineGraph graph, IEnumerable<IPipelineMethod<T>> nodes)
         {
             if (logger is not NullLogger)
             {

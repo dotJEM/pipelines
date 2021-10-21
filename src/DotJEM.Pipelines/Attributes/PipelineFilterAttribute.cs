@@ -2,6 +2,7 @@
 
 namespace DotJEM.Pipelines.Attributes
 {
+    [AttributeUsage(AttributeTargets.All)]
     public abstract class PipelineFilterAttribute : Attribute
     {
         public abstract string Group { get; }

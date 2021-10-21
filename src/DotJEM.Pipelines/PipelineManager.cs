@@ -37,7 +37,7 @@ namespace DotJEM.Pipelines
             IPipelineGraph<T> graph = factory.GetGraph<T>();
             return (IUnboundPipeline<T>)cache.GetOrAdd(graph.Key(context), key =>
             {
-                IEnumerable<MethodNode<T>> matchingNodes = graph.Nodes(context);
+                IEnumerable<IPipelineMethod<T>> matchingNodes = graph.Nodes(context);
                 return new UnboundPipeline<T>(performance, graph, matchingNodes);
             });
         }

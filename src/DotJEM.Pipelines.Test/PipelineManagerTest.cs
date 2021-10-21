@@ -95,8 +95,8 @@ namespace DotJEM.Pipelines.Test
                 .For((FakeBContext)contextB, ctx => Task.FromResult(JObject.FromObject(new { ctx.Name })));
             JObject resultB = await pipelineB.Invoke();
 
-            Console.WriteLine(resultA);
-            Console.WriteLine(resultB);
+            Assert.That((string)resultA["Name"], Is.EqualTo("contextA.RunA"));
+            Assert.That((string)resultB["Name"], Is.EqualTo("contextB.RunB"));
         }
 
         public class DifferentContextProvider : IPipelineHandlerProvider
@@ -116,11 +116,70 @@ namespace DotJEM.Pipelines.Test
             }
 
         }
+        
+        [Test]
+        public async Task For_DifferentProviders_ReturnsCompiledPipelineWorking()
+        {
+            IPipelineHandlerProvider[] providersArr = { new ChildAPipelineProvider(), new ChildBPipelineProvider() };
+            IPipelineHandlerCollection providers = new PipelineHandlerCollection(providersArr);
+            IPipelines pipelines = new PipelineManager(new FakeLogger(), new PipelineGraphFactory(providers, new PipelineExecutorDelegateFactory()));
+            IPipelineContext contextA = new FakeAContext()
+                .Set("id", 42)
+                .Set("name", "contextA")
+                .Set("method", "A")
+                .Set("type", "A");
+            IPipelineContext contextB = new FakeAContext()
+                .Set("id", 42)
+                .Set("name", "contextB")
+                .Set("method", "A")
+                .Set("type", "B");
+
+            ICompiledPipeline<JObject> pipelineA = pipelines
+                .For((FakeAContext)contextA, ctx => Task.FromResult(JObject.FromObject(new { ctx.Name })));
+            JObject resultA = await pipelineA.Invoke();
+            
+            ICompiledPipeline<JObject> pipelineB = pipelines
+                .For((FakeAContext)contextB, ctx => Task.FromResult(JObject.FromObject(new { ctx.Name })));
+            JObject resultB = await pipelineB.Invoke();
+
+            Assert.That((string)resultA["Name"], Is.EqualTo("ChildAPipelineProvider.contextA.RunA"));
+            Assert.That((string)resultB["Name"], Is.EqualTo("ChildBPipelineProvider.contextB.RunA"));
+        }
+
+        public abstract class BasePipelineProvider : IPipelineHandlerProvider
+        {
+            [PropertyFilter("method", "A")]
+            public Task<JObject> RunA(string name, IPipelineContext context, INext<JObject, string> next)
+            {
+                Console.WriteLine($"{GetType().Name}.RunA({name})");
+                return next.Invoke($"{GetType().Name}.{name}.RunA");
+            }
+
+            [PropertyFilter("method", "B")]
+            public Task<JObject> RunB(string name, IPipelineContext context, INext<JObject, string> next)
+            {
+                Console.WriteLine($"{GetType().Name}.RunB({name})");
+                return next.Invoke($"{GetType().Name}.{name}.RunB");
+            }
+        }
+
+
+        [PropertyFilter("type", "A")]
+        public class ChildAPipelineProvider : BasePipelineProvider
+        {
+        }
+
+        [PropertyFilter("type", "B")]
+        public class ChildBPipelineProvider : BasePipelineProvider
+        {
+        }
+
 
         public class FakeAContext : PipelineContext
         {
             public string Name => (string)Get("name");
         }
+
         public class FakeBContext : PipelineContext 
         {
             public string Name => (string)Get("name");
