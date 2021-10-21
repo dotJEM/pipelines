@@ -551,6 +551,8 @@ namespace DotJEM.Pipelines.NextHandlers
 
     public static class NextFactory
     {
+        public static INext<TResult> Create<TResult>(IPipelineContextCarrier<TResult> context, INode<TResult> next)
+            => new Next<TResult>(context, next);
 
         public static INext<TResult, T1> Create<TResult, T1>(IPipelineContextCarrier<TResult> context, INode<TResult> next, string param1Name)
             => new Next<TResult, T1>(context, next, param1Name);

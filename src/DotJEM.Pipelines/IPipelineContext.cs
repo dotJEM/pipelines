@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace DotJEM.Pipelines
 {
@@ -18,7 +20,7 @@ namespace DotJEM.Pipelines
 
     public class PipelineContext : IPipelineContext
     {
-        private readonly Dictionary<string, object> parameters = new();
+        protected readonly Dictionary<string, object> parameters = new();
 
         public object this[string key]
         {
@@ -66,6 +68,11 @@ namespace DotJEM.Pipelines
         {
             parameters.Remove(key);
             return this;
+        }
+
+        public override string ToString()
+        {
+            return parameters.Aggregate(new StringBuilder($"{GetType().Name}"), (sb, pair) => sb.AppendLine($"  -> {pair.Key} == {pair.Value}")).ToString();
         }
     }
 }

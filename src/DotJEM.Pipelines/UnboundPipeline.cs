@@ -43,6 +43,11 @@ namespace DotJEM.Pipelines
             this.context = (TContext)func(context);
             return this;
         }
+
+        public override string ToString()
+        {
+            return context.ToString();
+        }
     }
 
     public interface IUnboundPipeline<T>

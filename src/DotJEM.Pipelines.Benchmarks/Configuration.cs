@@ -1,115 +1,15 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Jobs;
 using DotJEM.Diagnostic;
 using DotJEM.Pipelines.Attributes;
-using DotJEM.Pipelines.Factories;
 using DotJEM.Pipelines.NextHandlers;
 using Newtonsoft.Json.Linq;
 
 namespace DotJEM.Pipelines.Benchmarks
 {
-    public class Configuration : ManualConfig
-    {
-    }
-
-    [SimpleJob(RuntimeMoniker.Net50),SimpleJob(RuntimeMoniker.Net48)]
-    public class PipelineExecutionBenchmarks
-    {
-        private readonly IPipelines pipelines;
-        private readonly PipelineContext context;
-
-        public PipelineExecutionBenchmarks()
-        {
-            IPipelineHandlerProvider[] providersArr = {
-                new LegacyAdapter()
-            };
-            IPipelineHandlerCollection providers = new PipelineHandlerCollection(providersArr);
-            pipelines = new PipelineManager(new NullLogger(), new PipelineGraphFactory(providers, new PipelineExecutorDelegateFactory()));
-
-            LegacyPrebound = new Lazy<ICompiledPipeline<JObject>>(() => Build("LEGACY"));
-            PurePrebound = new Lazy<ICompiledPipeline<JObject>>(() => Build("PURE"));
-        }
-        
-        private Lazy<ICompiledPipeline<JObject>> LegacyPrebound;
-        private Lazy<ICompiledPipeline<JObject>> PurePrebound;
-
-        private ICompiledPipeline<JObject> Build(string type) => Build(type, x => x);
-
-        private ICompiledPipeline<JObject> Build(string type, Func<IPipelineContext, IPipelineContext> ctx)
-        {
-            IPipelineContext context = ctx(new PipelineContext()
-                .Set("contentType", "none")
-                .Set("id", Guid.Empty)
-                .Set("method", "GET")
-                .Set("type", type));
-
-            ICompiledPipeline<JObject> pipeline = pipelines
-                .For(context, ctx => Task.FromResult(new JObject()));
-
-            return pipeline;
-        }
-
-        [Benchmark]
-        public void LegacyPipelineAdapter()
-        {
-            ICompiledPipeline<JObject> pipeline = Build("LEGACY");
-            pipeline.Invoke();
-        }
-
-        [Benchmark]
-        public void PurePipelineAdapter()
-        {
-            ICompiledPipeline<JObject> pipeline = Build("PURE");
-            pipeline.Invoke();
-        }
-
-        [Benchmark]
-        public void Pure1PipelineAdapter()
-        {
-            ICompiledPipeline<JObject> pipeline = Build("PURE1");
-            pipeline.Invoke();
-        }
-
-        [Benchmark]
-        public void Pure2PipelineAdapter()
-        {
-            ICompiledPipeline<JObject> pipeline = Build("PURE2");
-            pipeline.Invoke();
-        }
-        [Benchmark]
-        public void Pure3PipelineAdapter()
-        {
-            ICompiledPipeline<JObject> pipeline = Build("PURE3");
-            pipeline.Invoke();
-        }
-
-        [Benchmark]
-        public void PreboundLegacyPipelineAdapter()
-        {
-            LegacyPrebound.Value.Invoke();
-        }
-
-        [Benchmark]
-        public void PreboundPurePipelineAdapter()
-        {
-            PurePrebound.Value.Invoke();
-        }
-
-        [Benchmark]
-        public void EmptyPipeline()
-        {
-            ICompiledPipeline<JObject> pipeline = pipelines
-                .For<IPipelineContext, JObject>(new PipelineContext(), ctx => Task.FromResult(new JObject()));
-            pipeline.Invoke();
-        }
-    }
-
-
-    public class NullLogger : ILogger
+    public class EmptyLogger : ILogger
     {
         public Task LogAsync(string type, object customData = null) => Task.CompletedTask;
     }
@@ -118,8 +18,9 @@ namespace DotJEM.Pipelines.Benchmarks
     public class PureHandler : IPipelineHandlerProvider
     {
         [HttpMethodFilter("GET")]
-        public async Task<JObject> Get(IPipelineContext context, INext<JObject, string, Guid> next)
+        public async Task<JObject> Get(IPipelineContext context, INext<JObject> next)
         {
+            context.Set("type", "PURE.GET");
             return await next.Invoke();
         }
     }
@@ -130,7 +31,7 @@ namespace DotJEM.Pipelines.Benchmarks
         [HttpMethodFilter("GET")]
         public async Task<JObject> Get(string type, IPipelineContext context, INext<JObject, string> next)
         {
-            return await next.Invoke(type);
+            return await next.Invoke("PURE1.GET");
         }
     }
 
@@ -140,7 +41,7 @@ namespace DotJEM.Pipelines.Benchmarks
         [HttpMethodFilter("GET")]
         public async Task<JObject> Get(string type, Guid id, IPipelineContext context, INext<JObject, string, Guid> next)
         {
-            return await next.Invoke(type, id);
+            return await next.Invoke("PURE2.GET", id);
         }
     }
 
@@ -150,7 +51,7 @@ namespace DotJEM.Pipelines.Benchmarks
         [HttpMethodFilter("GET")]
         public async Task<JObject> Get(string type, Guid id, string method, IPipelineContext context, INext<JObject, string, Guid, string> next)
         {
-            return await next.Invoke(type, id, method);
+            return await next.Invoke("PURE3.GET", id, method);
         }
     }
 
