@@ -50,7 +50,7 @@ namespace DotJEM.Pipelines.Benchmarks
             return AfterDelete(previous, contentType, context);
         }
 
-        [PropertyFilter("type", "^REVERT$")]
+        [PropertyFilter("method", "^REVERT$")]
         public async Task<JObject> Revert(string contentType, Guid id, JObject target, JObject current, IPipelineContext context, INext<JObject, string, Guid, JObject, JObject> next)
         {
             Console.WriteLine(context);
