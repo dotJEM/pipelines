@@ -77,10 +77,7 @@ namespace DotJEM.Pipelines
             }
         }
 
-        public Task<T> Invoke(IPipelineContextCarrier<T> context)
-        {
-            return target.Invoke(context);
-        }
+        public Task<T> Invoke(IPipelineContextCarrier<T> context) => target.Invoke(context);
 
         public override string ToString()
         {
@@ -125,7 +122,7 @@ namespace DotJEM.Pipelines
                 JObject info = perfGenerator(carrier.Context);
                 info["$$handler"] = signature;
                 using (logger.Track("pipeline", info))
-                    return await target(carrier.Context, factory(carrier, next));
+                    return await target(carrier.Context, factory(carrier, next)).ConfigureAwait(false);
             }
 
             public override string ToString()
@@ -153,7 +150,7 @@ namespace DotJEM.Pipelines
                 JObject info = perfGenerator(carrier.Context);
                 info["$$handler"] = $"(LoggingFinalNode)";
                 using (logger.Track("pipeline", info))
-                    return await carrier.Complete(carrier.Context);
+                    return await carrier.Complete(carrier.Context).ConfigureAwait(false);
             }
 
             public override string ToString() => "(LoggingFinalNode)";
