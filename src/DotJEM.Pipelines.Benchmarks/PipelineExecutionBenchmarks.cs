@@ -49,6 +49,10 @@ public class PipelineExecutionWithLoggerBenchmarks
         ICompiledPipeline<JObject> pipeline = pipelines
             .For((JsonPipelineContext)context, ctx => Task.FromResult(ctx.ToJson()));
 
+#if DEBUG
+        Console.WriteLine(pipeline);
+#endif
+
         return pipeline;
     }
 
@@ -113,7 +117,6 @@ public class PipelineExecutionWithLoggerBenchmarks
 public class PipelineExecutionWithoutLoggerBenchmarks
 {
     private readonly IPipelines pipelines;
-    private readonly PipelineContext context;
 
     public PipelineExecutionWithoutLoggerBenchmarks()
     {
@@ -127,6 +130,7 @@ public class PipelineExecutionWithoutLoggerBenchmarks
         IPipelineHandlerCollection providers = new PipelineHandlerCollection(providersArr);
         pipelines = new PipelineManager(new NullLogger(), new PipelineGraphFactory(providers, new PipelineExecutorDelegateFactory()));
 
+        
     }
 
     private ICompiledPipeline<JObject> Build(string type) => Build(type, x => x);
@@ -141,6 +145,11 @@ public class PipelineExecutionWithoutLoggerBenchmarks
 
         ICompiledPipeline<JObject> pipeline = pipelines
             .For((JsonPipelineContext)context, ctx => Task.FromResult(ctx.ToJson()));
+
+#if DEBUG
+        Console.WriteLine(pipeline);
+#endif
+
         return pipeline;
     }
 

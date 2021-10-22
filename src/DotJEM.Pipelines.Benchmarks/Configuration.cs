@@ -14,7 +14,7 @@ namespace DotJEM.Pipelines.Benchmarks
         public Task LogAsync(string type, object customData = null) => Task.CompletedTask;
     }
 
-    [PropertyFilter("type", "PURE")]
+    [PropertyFilter("type", "^PURE$")]
     public class PureHandler : IPipelineHandlerProvider
     {
         [HttpMethodFilter("GET")]
@@ -25,7 +25,7 @@ namespace DotJEM.Pipelines.Benchmarks
         }
     }
 
-    [PropertyFilter("type", "PURE1")]
+    [PropertyFilter("type", "^PURE1$")]
     public class Pure1Handler : IPipelineHandlerProvider
     {
         [HttpMethodFilter("GET")]
@@ -35,7 +35,7 @@ namespace DotJEM.Pipelines.Benchmarks
         }
     }
 
-    [PropertyFilter("type", "PURE2")]
+    [PropertyFilter("type", "^PURE2$")]
     public class Pure2Handler : IPipelineHandlerProvider
     {
         [HttpMethodFilter("GET")]
@@ -45,7 +45,7 @@ namespace DotJEM.Pipelines.Benchmarks
         }
     }
 
-    [PropertyFilter("type", "PURE3")]
+    [PropertyFilter("type", "^PURE3$")]
     public class Pure3Handler : IPipelineHandlerProvider
     {
         [HttpMethodFilter("GET")]
@@ -55,7 +55,7 @@ namespace DotJEM.Pipelines.Benchmarks
         }
     }
 
-    [PropertyFilter("type", "LEGACY")]
+    [PropertyFilter("type", "^LEGACY$")]
     public class LegacyAdapter : PipelineHandler
     {
         public override JObject AfterGet(JObject entity, string contentType)
