@@ -70,6 +70,7 @@ namespace DotJEM.Pipelines
             return this;
         }
 
+
         public override string ToString()
         {
             return parameters.Aggregate(new StringBuilder($"{GetType().Name}"), (sb, pair) => sb.AppendLine($"  -> {pair.Key} == {pair.Value}")).ToString();

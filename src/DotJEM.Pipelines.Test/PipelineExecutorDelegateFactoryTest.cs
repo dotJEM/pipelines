@@ -18,7 +18,7 @@ namespace DotJEM.Pipelines.Test
             PipelineExecutorDelegateFactory factory = new PipelineExecutorDelegateFactory();
 
             FakeFirstTarget target = new FakeFirstTarget();
-            PipelineExecutorDelegate<JObject> action = factory.CreateInvocator<JObject>(target, target.GetType().GetMethod(nameof(FakeFirstTarget.Run)));
+            PipelineExecutorDelegate<JObject> action = factory.CreateInvocator<JObject, FakeContext>(target, target.GetType().GetMethod(nameof(FakeFirstTarget.Run)));
             IPipelineContext context = new FakeContext()
                 .Set("id", 42)
                 .Set("name", "Foo");
@@ -33,7 +33,7 @@ namespace DotJEM.Pipelines.Test
 
 
             FakeFirstTarget target = new FakeFirstTarget();
-            Expression<NextFactoryDelegate<JObject>> exp = factory.CreateNextStuff<JObject>(target.GetType().GetMethod(nameof(FakeFirstTarget.Run)));
+            Expression<NextFactoryDelegate<JObject>> exp = factory.CreateNextFactoryDelegateExpression<JObject>(target.GetType().GetMethod(nameof(FakeFirstTarget.Run)));
 
             Console.WriteLine(exp.ToReadableString());
 

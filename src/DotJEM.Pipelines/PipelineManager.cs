@@ -34,7 +34,7 @@ namespace DotJEM.Pipelines
 
         public IUnboundPipeline<T> LookupPipeline<TContext, T>(TContext context) where TContext : class, IPipelineContext
         {
-            IPipelineGraph<T> graph = factory.GetGraph<T>();
+            IPipelineGraph<T> graph = factory.GetGraph<T, TContext>();
             return (IUnboundPipeline<T>)cache.GetOrAdd(graph.Key(context), key =>
             {
                 IEnumerable<IPipelineMethod<T>> matchingNodes = graph.Nodes(context);

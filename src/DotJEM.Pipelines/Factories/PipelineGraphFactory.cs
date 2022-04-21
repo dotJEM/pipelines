@@ -15,7 +15,7 @@ namespace DotJEM.Pipelines.Factories
 {
     public interface IPipelineGraph
     {
-        string Key(IPipelineContext context);
+        string Key<TContext>(TContext context) where TContext : IPipelineContext;
         JObject Performance(IPipelineContext context);
     }
 
@@ -42,7 +42,8 @@ namespace DotJEM.Pipelines.Factories
             perfGenerator = spy.CreatePerfGenerator();
         }
 
-        public string Key(IPipelineContext context) => keyGenerator.Generate(context);
+        public string Key<TContext>(TContext context) where TContext : IPipelineContext
+            => keyGenerator.Generate(context);
         public JObject Performance(IPipelineContext context) => perfGenerator.Generate(context);
 
         public IEnumerable<IPipelineMethod<T>> Nodes(IPipelineContext context)
@@ -52,8 +53,8 @@ namespace DotJEM.Pipelines.Factories
 
         public class KeyGenerator
         {
-            private readonly SHA256CryptoServiceProvider provider = new();
             private readonly Encoding encoding = Encoding.UTF8;
+            private readonly SHA256CryptoServiceProvider provider = new();
 
             private readonly string[] keys;
 
@@ -62,24 +63,20 @@ namespace DotJEM.Pipelines.Factories
                 this.keys = keys;
             }
 
-            public string Generate(IPipelineContext context)
+            public string Generate<TContext>(TContext context) where TContext : IPipelineContext
             {
                 if (context == null) throw new ArgumentNullException(nameof(context));
                 //TODO: This looks expensive. Perhaps we could cut some corners?
                 IEnumerable<byte> bytes = keys
                     .SelectMany(key => context.TryGetValue(key, out object value) ? encoding.GetBytes(value.ToString()) : Array.Empty<byte>());
-                //TODO: The pipelines are dependant on the actual context type at this time, inside the pipeline we should really not care, as such the majority of a pipeline
-                //      should be reuseable in case that the return type is the same, and the context just as to inherit from IPipelineContext, but for now that is not the case.
-                byte[] hash = provider.ComputeHash(bytes.ToArray());
-                //byte[] hash = provider.ComputeHash(bytes.Concat(encoding.GetBytes(context.GetType().FullName)).ToArray());
-                string hashkey = string.Join("", hash.Select(b => b.ToString("X2")));
-                return hashkey;
+                byte[] typeBytes = typeof(TContext).GUID.ToByteArray();
+                byte[] hash = provider.ComputeHash(bytes.Concat(typeBytes).ToArray());
+                return string.Join("", hash.Select(b => b.ToString("X2")));
             }
         }
 
         public class PerfGenerator
         {
-            
             private readonly string[] keys;
 
             public PerfGenerator(string[] keys)
@@ -118,7 +115,7 @@ namespace DotJEM.Pipelines.Factories
 
     public interface IPipelineGraphFactory
     {
-        IPipelineGraph<T> GetGraph<T>();
+        IPipelineGraph<T> GetGraph<T, TContext>();
     }
 
     public class PipelineGraphFactory : IPipelineGraphFactory
@@ -126,7 +123,7 @@ namespace DotJEM.Pipelines.Factories
         private readonly IPipelineHandlerCollection handlers;
         private readonly IPipelineExecutorDelegateFactory factory;
 
-        private readonly ConcurrentDictionary<Type, IPipelineGraph> graphs = new();
+        private readonly ConcurrentDictionary<string, IPipelineGraph> graphs = new();
 
         public PipelineGraphFactory(IPipelineHandlerCollection handlers, IPipelineExecutorDelegateFactory factory)
         {
@@ -134,31 +131,32 @@ namespace DotJEM.Pipelines.Factories
             this.factory = factory;
         }
 
-        public IPipelineGraph<T> GetGraph<T>()
+        public IPipelineGraph<T> GetGraph<T, TContext>()
         {
-            return (IPipelineGraph<T>)graphs.GetOrAdd(typeof(T), _ => BuildGraph<T>(this.handlers));
+
+            return (IPipelineGraph<T>)graphs.GetOrAdd($"{typeof(T).GUID:N}-{typeof(TContext).GUID:N}", _ => BuildGraph<T, TContext>(this.handlers));
         }
 
-        private IPipelineGraph BuildGraph<T>(IPipelineHandlerCollection providers)
+        private IPipelineGraph BuildGraph<T, TContext>(IPipelineHandlerCollection providers)
         {
             List<IClassNode<T>> groups = new();
             foreach (IPipelineHandlerProvider provider in providers)
             {
                 Type type = provider.GetType();
-                PipelineFilterAttribute[] selectors = type.GetCustomAttributes(true).OfType<PipelineFilterAttribute>().ToArray();
+                PipelineFilterAttribute[] selectors = type.GetCustomAttributes<PipelineFilterAttribute>().ToArray();
 
                 List<MethodNode<T>> nodes = new();
+                // ReSharper disable once LoopCanBeConvertedToQuery -> Linq will not make this more clear!
                 foreach (MethodInfo method in type.GetMethods())
                 {
                     if (method.ReturnType != typeof(Task<T>))
                         continue;
+                    
+                    PipelineFilterAttribute[] methodSelectors = method.GetCustomAttributes<PipelineFilterAttribute>(true).ToArray();
+                    if (!methodSelectors.Any()) continue;
 
-                    PipelineFilterAttribute[] methodSelectors = method.GetCustomAttributes(true).OfType<PipelineFilterAttribute>().ToArray();
-                    if (methodSelectors.Any())
-                    {
-                        MethodNode<T> node = factory.CreateNode<T>(provider, method, selectors.Concat(methodSelectors).ToArray());
-                        nodes.Add(node);
-                    }
+                    MethodNode<T> node = factory.CreateNode<T, TContext>(provider, method, selectors.Concat(methodSelectors).ToArray());
+                    nodes.Add(node);
                 }
                 groups.Add(new ClassNode<T>(nodes));
             }
